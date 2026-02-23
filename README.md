@@ -27,7 +27,8 @@ Dont have Rust? https://rust-lang.org/tools/install/.
 2. Go to [https://account.battle.net/login/en/?ref=localhost](https://account.battle.net/login/en/?ref=localhost).
 3. Log in to the Battle.net account that owns the authenticator.
 4. After login, you should be redirected to a `localhost` URL (often an error page).
-5. Copy the `ST=...` value from the address bar and paste it into the tool.
+5. Copy the `ST=...` value from the address bar and paste it into the tool. It should look something like: 
+`US-h6392c12...1kh10n2p7-531234`
 
 ## Why?
 
