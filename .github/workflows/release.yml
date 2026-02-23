@@ -1,0 +1,84 @@
+name: Draft Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (example: v0.1.0)"
+        required: true
+      name:
+        description: "Release name (defaults to tag)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            binary_name: bnet-auth-export
+            asset_name: bnet-auth-export-linux-x86_64.tar.gz
+            archive_type: tar.gz
+          - name: macos-x86_64
+            os: macos-13
+            binary_name: bnet-auth-export
+            asset_name: bnet-auth-export-macos-x86_64.tar.gz
+            archive_type: tar.gz
+          - name: windows-x86_64
+            os: windows-latest
+            binary_name: bnet-auth-export.exe
+            asset_name: bnet-auth-export-windows-x86_64.zip
+            archive_type: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Strip binary (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: strip target/release/${{ matrix.binary_name }} || true
+
+      - name: Package artifact (tar.gz)
+        if: matrix.archive_type == 'tar.gz'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/release/${{ matrix.binary_name }} .
+          tar -czf dist/${{ matrix.asset_name }} ${{ matrix.binary_name }} README.md
+
+      - name: Package artifact (zip)
+        if: matrix.archive_type == 'zip'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/release/${{ matrix.binary_name }} .
+          7z a dist/${{ matrix.asset_name }} ${{ matrix.binary_name }} README.md
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/${{ matrix.asset_name }}
+
+      - name: Upload release asset to draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.name || inputs.tag }}
+          target_commitish: ${{ github.sha }}
+          draft: true
+          files: dist/${{ matrix.asset_name }}
