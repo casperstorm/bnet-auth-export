@@ -2,13 +2,6 @@ name: Draft Release
 
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag (example: v0.1.0)"
-        required: true
-      name:
-        description: "Release name (defaults to tag)"
-        required: false
 
 permissions:
   contents: write
@@ -27,9 +20,9 @@ jobs:
             asset_name: bnet-auth-export-linux-x86_64.tar.gz
             archive_type: tar.gz
           - name: macos-x86_64
-            os: macos-13
+            os: macos-latest
             binary_name: bnet-auth-export
-            asset_name: bnet-auth-export-macos-x86_64.tar.gz
+            asset_name: bnet-auth-export-macos.tar.gz
             archive_type: tar.gz
           - name: windows-x86_64
             os: windows-latest
@@ -43,6 +36,18 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Read version from Cargo.toml
+        id: version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
+          if [ -z "$version" ]; then
+            echo "Could not read version from Cargo.toml" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
       - name: Build release binary
         run: cargo build --release
@@ -77,8 +82,7 @@ jobs:
       - name: Upload release asset to draft release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.tag }}
-          name: ${{ inputs.name || inputs.tag }}
+          tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
           draft: true
           files: dist/${{ matrix.asset_name }}
